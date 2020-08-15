@@ -4,8 +4,13 @@ const validator = require('express-validator');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 const app = module.exports = express();
+
+//jwt params
+const jwtKey = 'jwtkey';
+const jwtExpireSeconds = 3600;
 
 app.use(cookieParser());
 
@@ -40,13 +45,69 @@ router.get('/login', (req, res) => {
 });
 
 router.post('/login', (req, res) => {
-  req.sanitize(req.body.email);
-  req.sanitize(req.body.password);
-  validator.isEmail(req.body.email);
-  //login function in auth should take care of the rest
+  let {email, password} = req.body;
+  req.sanitize(email);
+  req.sanitize(password);
+  validator.isEmail(email);
+  //fetch db stuff
+  //check if user exists
+  //hash pass
+  //compare hashes
+  const token = jwt.sign({email}, jwtKey, {
+    algorithm: 'HS256',
+    expiresIn: jwtExpireSeconds
+  });
+
+  res.cookies('token', token, {path: '/auth', maxAge: jwtExpireSeconds*1000});
+  res.end();
 });
 
-ro
+router.post('/register')
+
+const jwtVerify = (req, res) => {
+  const token = req.cookies['token'];
+  if (!token) return res.status(401).end();
+
+  let payload;
+  try {
+    payload = jwt.verify(token, jwtKey);
+  }
+  catch(e) {
+    if (e instanceof jwt.JsonWebTokenError) return res.status(401).end();
+    else return res.status(400).end();
+  }
+
+  res.send('verified');
+}
+
+const jwtRefresh = (req, res) => {
+  const token = req.cookies['token'];
+  if (!token) return res.status(401).end();
+
+  let payload;
+  try {
+    payload = jwt.verify(token, jwtKey);
+  }
+  catch(e) {
+    if (e instanceof jwt.JsonWebTokenError) return res.status(401).end();
+    else return res.status(400).end();
+  }
+
+  const now = Math.round(Number(New Date())/1000);
+  if (payload.exp-now>30) {
+    return res.status(400).end();
+  }
+
+  const newToken = jwt.sign({email: payload.email}, jwtKey, {
+    algorithm: 'HS256',
+    expiresIn: jwtExpireSeconds
+  });
+
+  res.cookies('token', newToken, {maxAge: jwtExpireSeconds});
+  res.end();
+}
+
+router.get('/auth', jwtVerify);
 
 app.use('/', router);
 
