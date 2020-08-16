@@ -2,9 +2,11 @@ const express = require('express');
 const sanitizer = require('express-sanitizer');
 const validator = require('express-validator');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const {v4: uuidv4} = require('uuid');
 const router = express.Router();
 const app = module.exports = express();
 
@@ -14,12 +16,27 @@ const jwtExpireSeconds = 3600;
 
 app.use(cookieParser());
 
+const sessionStore = process.env.DEBUG!=='true' ? new MySQLStore({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME
+}) : new session.MemoryStore();
+
 app.use(session({
+  genid: (req) => {
+    return uuidv4();
+  },
   secret: 'this is the secret',
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 10000
+    httpOnly: true,
+    maxAge: 10000,
+    sameSite: 'strict',
+    /*secure: true, only when https is enabled*/
   }
 }));
 
@@ -93,7 +110,7 @@ const jwtRefresh = (req, res) => {
     else return res.status(400).end();
   }
 
-  const now = Math.round(Number(New Date())/1000);
+  const now = Math.round(Number(new Date())/1000);
   if (payload.exp-now>30) {
     return res.status(400).end();
   }
@@ -111,7 +128,7 @@ router.get('/auth', jwtVerify);
 
 app.use('/', router);
 
-app.listen(3000, (err) => {
+app.listen(process.env.PORT, (err) => {
   if (err) console.log(err);
-  console.log('listening on port 3000');
+  console.log(`Starting server on ${process.env.PORT} with DEBUG=${process.env.DEBUG}`)
 });
