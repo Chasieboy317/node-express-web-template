@@ -5,14 +5,11 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
-const jwt = require('jsonwebtoken');
 const {v4: uuidv4} = require('uuid');
 const router = express.Router();
 const app = module.exports = express();
 
-//jwt params
-const jwtKey = 'jwtkey';
-const jwtExpireSeconds = 3600;
+const {jwtVerify, jwtRefresh, jwtIssue} = require('./server_modules/jwt')
 
 app.use(cookieParser());
 
@@ -57,11 +54,7 @@ router.get('/', (req, res) => {
   }));
 });
 
-router.get('/login', (req, res) => {
-  //serve login page
-});
-
-router.post('/login', (req, res) => {
+router.post('/login', (req, res, next) => {
   let {email, password} = req.body;
   req.sanitize(email);
   req.sanitize(password);
@@ -70,74 +63,30 @@ router.post('/login', (req, res) => {
   //check if user exists
   //hash pass
   //compare hashes
-  const token = jwt.sign({email}, jwtKey, {
-    algorithm: 'HS256',
-    expiresIn: jwtExpireSeconds
-  });
-
-  res.cookies('token', token, {path: '/auth', maxAge: jwtExpireSeconds*1000});
-  res.end();
+  res.cookie('email', 'emailhere@email.com', {path: '/', maxAge: 1000*60*60});
+  next();
+},
+jwtIssue,
+(req, res, next) => {
+  res.send(`logged in ${req.cookies['token']}`);
 });
 
 router.post('/register')
 
-const jwtVerify = (req, res) => {
-  const token = req.cookies['token'];
-  if (!token) return res.status(401).end();
+router.get('/auth/*', jwtVerify);
 
-  let payload;
-  try {
-    payload = jwt.verify(token, jwtKey);
-  }
-  catch(e) {
-    if (e instanceof jwt.JsonWebTokenError) return res.status(401).end();
-    else return res.status(400).end();
-  }
-
-  res.send('verified');
-}
-
-const jwtRefresh = (req, res) => {
-  const token = req.cookies['token'];
-  if (!token) return res.status(401).end();
-
-  let payload;
-  try {
-    payload = jwt.verify(token, jwtKey);
-  }
-  catch(e) {
-    if (e instanceof jwt.JsonWebTokenError) return res.status(401).end();
-    else return res.status(400).end();
-  }
-
-  const now = Math.round(Number(new Date())/1000);
-  if (payload.exp-now>30) {
-    return res.status(400).end();
-  }
-
-  const newToken = jwt.sign({email: payload.email}, jwtKey, {
-    algorithm: 'HS256',
-    expiresIn: jwtExpireSeconds
-  });
-
-  res.cookies('token', newToken, {maxAge: jwtExpireSeconds});
-  res.end();
-}
-
-router.get('/auth/*', (req, res) => {
-  res.send('authorizing get request');
-});
-
-router.post('/auth/*', (req, res, next) => {
-  console.log('authorizing post request');
-  if (true) next('route');
-});
-
-router.post('/auth/post_comment', (req, res) => {
-  res.send('authorized');
-});
+router.post('/auth/*', jwtVerify);
 
 app.use('/', router);
+
+app.use('/', (req, res) => {
+  res.status(404).send('Page not found');
+})
+
+app.use('/', (err, req, res) => {
+  console.log(err);
+  res.status(500).send('Something broke');
+})
 
 app.listen(process.env.PORT, (err) => {
   if (err) console.log(err);
