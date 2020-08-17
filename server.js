@@ -124,7 +124,18 @@ const jwtRefresh = (req, res) => {
   res.end();
 }
 
-router.get('/auth', jwtVerify);
+router.get('/auth/*', (req, res) => {
+  res.send('authorizing get request');
+});
+
+router.post('/auth/*', (req, res, next) => {
+  console.log('authorizing post request');
+  if (true) next('route');
+});
+
+router.post('/auth/post_comment', (req, res) => {
+  res.send('authorized');
+});
 
 app.use('/', router);
 
