@@ -1,4 +1,5 @@
 const fs = require('fs');
+
 module.exports = class ContentChecker {
   constructor() {
     this.filterList = {};
@@ -14,7 +15,13 @@ module.exports = class ContentChecker {
 
   load(file) {
     this.filterList = {};
-    const words = fs.readFileSync(file, {encoding: 'utf8', flag: 'r'}).split('\r\n');
+    let words;
+    try {
+      words = fs.readFileSync(file, {encoding: 'utf8', flag: 'r'}).split('\r\n');
+    }
+    catch(e) {
+      console.error(e);
+    }
     words.forEach(word => {
       this.filterList[word] = true;
     });
@@ -31,4 +38,4 @@ module.exports = class ContentChecker {
   matchesString(string) {
     //method should use regex to match
   }
-}
+};
