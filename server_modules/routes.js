@@ -2,6 +2,7 @@ const express = require('express');
 const validator = require('express-validator');
 const router = express.Router();
 const path = require('path');
+const root = require('../root');
 
 const {jwtVerify, jwtRefresh, jwtIssue} = require('./jwt');
 const {checkContent, load, filterList, addWord, removeWord} = require('./content-check/content-check')({
@@ -45,10 +46,30 @@ jwtIssue,
   res.send(`logged in ${req.cookies['token']}`);
 });
 
-router.post('/register')
+router.post('/register');
+
+router.post('/upload', (req, res) => {
+  //add method for handling extensions
+  if (!req.files || Object.keys(req.files).length===0) {
+    //in the future throw an error here and have the error middleware handle it
+    return res.status(400).send('No files were uploaded');
+  }
+
+  let _file = req.files._file;
+
+  _file.mv(`${path.join(root, 'uploads', _file.name)}`, (err) => {
+    if (err) return res.status(500).send(err);
+    res.send('SUCCESS');
+  })
+});
+
 
 router.get('/auth/*', jwtVerify);
 
 router.post('/auth/*', jwtVerify);
+
+router.get('/image', (req, res) => {
+  res.send(`<img src="/assets/img.jpg">`);
+})
 
 module.exports = router;
