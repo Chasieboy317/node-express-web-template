@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const path = require('path');
 const {v4: uuidv4} = require('uuid');
+
 const app = module.exports = express();
 
 const routes = require('./server_modules/routes.js');
@@ -23,13 +24,15 @@ app.post('/upload', fileupload({
 app.use(cookieParser());
 app.use(helmet());
 
-const sessionStore = process.env.DEBUG!=='true' ? new MySQLStore({
+const dbSettings = {
   host: process.env.DB_HOST,
   port: process.env.DB_PORT,
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME
-}) : new session.MemoryStore();
+}
+
+const sessionStore = process.env.DEBUG!=='true' ? new MySQLStore(dbSettings) : new session.MemoryStore();
 
 app.use(session({
   genid: (req) => {
@@ -39,11 +42,12 @@ app.use(session({
   store: sessionStore,
   resave: false,
   saveUninitialized: false,
+  rolling: true,
   cookie: {
     httpOnly: true,
     maxAge: 10000,
     sameSite: 'strict',
-    /*secure: true, only when https is enabled*/
+    secure: process.env.USE_HTTPS==='true' : false
   }
 }));
 
