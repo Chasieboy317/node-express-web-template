@@ -2,6 +2,9 @@ const jwt = require('jsonwebtoken');
 const jwtKey = process.env.jwtKey || 'secret jwt key';
 const jwtExpireSeconds = process.env.jwtExpireSeconds || 3600;
 
+//todo:
+//set refresh token in session in database
+//schedule method generate new refresh token and token when the user makes a request and a session is about to expire or has expired
 module.exports = {
   jwtVerify: (req, res, next) => {
     const token = req.cookies['token'];
