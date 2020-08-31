@@ -47,7 +47,7 @@ app.use(session({
     httpOnly: true,
     maxAge: 10000,
     sameSite: 'strict',
-    secure: process.env.USE_HTTPS==='true' : false
+    secure: process.env.USE_HTTPS==='true'
   }
 }));
 
